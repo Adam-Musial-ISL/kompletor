@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Kompletacji QR - Wielopunktowy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        .scanned-row {
+            background-color: #f0fdf4 !important;
+            transition: background-color 0.5s ease;
+        }
+        
+        @keyframes pulse-green {
+            0% { background-color: #86efac; }
+            100% { background-color: #f0fdf4; }
+        }
+
+        .found-highlight {
+            animation: pulse-green 2s ease-out;
+        }
+
+        #reader {
+            width: 100% !important;
+            border: none !important;
+        }
+        #reader video {
+            border-radius: 0.5rem;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-900">
+
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-blue-700">KOMPLETOR ISL</h1>
+            <p class="text-gray-600 mt-2">Wielopunktowy system weryfikacji łańcucha logistycznego.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- 1. Konfiguracja punktu i pliku -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Lokalizacja / Punkt kontrolny:</label>
+                    <input type="text" id="locationInput" placeholder="np. Pakowanie, Wysyłka..." 
+                        class="w-full p-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-bold text-blue-700">
+                </div>
+
+                <label class="block text-sm font-bold text-gray-700 mb-2 underline">Wczytaj arkusz (.xlsx)</label>
+                <input type="file" id="excelInput" accept=".xlsx, .xls" 
+                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                
+                <div id="columnSelectorSection" class="mt-4 hidden border-t pt-4">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Kolumna do skanowania:</label>
+                    <select id="qrColumnSelect" class="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500"></select>
+                </div>
+            </div>
+
+            <!-- 2. Skaner -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:col-span-2">
+                <label class="block text-sm font-bold text-gray-700 mb-2 underline">Skaner kodów</label>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div id="reader" class="flex-1 overflow-hidden bg-black rounded-lg min-h-[200px]"></div>
+                    <div class="flex-1 flex flex-col justify-center items-center p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                        <div id="scanResult" class="text-center font-bold text-lg mb-2 h-8"></div>
+                        <div id="scanLog" class="text-xs text-gray-500 text-center italic">Czekam na skan...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statystyki -->
+        <div id="stats" class="hidden flex flex-wrap justify-between items-center mb-4 p-4 bg-blue-50 rounded-lg border border-blue-100 gap-4">
+            <div class="flex items-center gap-4">
+                <span id="currentLocationLabel" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold uppercase tracking-widest">Punkt: ?</span>
+                <span class="text-sm text-blue-700 font-medium whitespace-nowrap">Postęp: <span id="progressText" class="text-xl font-black">0 / 0</span></span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="location.reload()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition">Nowy punkt</button>
+                <button id="downloadBtn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg text-sm font-bold shadow-md transition transform active:scale-95">Pobierz wynik (.xlsx)</button>
+            </div>
+        </div>
+
+        <!-- Tabela -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <table class="w-full text-left border-collapse" id="pickingTable">
+                    <thead id="tableHeader" class="bg-gray-100 sticky top-0 z-10 shadow-sm border-b"></thead>
+                    <tbody id="tableBody" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+            <div id="emptyState" class="py-20 text-center text-gray-400">
+                <p class="text-lg">Brak danych. Wprowadź lokalizację i wczytaj plik.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Alert -->
+    <div id="customAlert" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center">
+            <p id="alertMessage" class="text-lg font-bold mb-4"></p>
+            <button onclick="document.getElementById('customAlert').classList.add('hidden')" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">OK</button>
+        </div>
+    </div>
+
+    <script>
+        let tableData = [];
+        let headers = [];
+        let currentPointName = "";
+
+        const excelInput = document.getElementById('excelInput');
+        const locationInput = document.getElementById('locationInput');
+        const tableHeader = document.getElementById('tableHeader');
+        const tableBody = document.getElementById('tableBody');
+        const emptyState = document.getElementById('emptyState');
+        const statsDiv = document.getElementById('stats');
+        const progressText = document.getElementById('progressText');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const scanResultText = document.getElementById('scanResult');
+        const scanLog = document.getElementById('scanLog');
+        const qrColumnSelect = document.getElementById('qrColumnSelect');
+        const columnSelectorSection = document.getElementById('columnSelectorSection');
+        const currentLocationLabel = document.getElementById('currentLocationLabel');
+
+        function showAlert(msg) {
+            document.getElementById('alertMessage').innerText = msg;
+            document.getElementById('customAlert').classList.remove('hidden');
+        }
+
+        excelInput.addEventListener('change', (e) => {
+            currentPointName = locationInput.value.trim();
+            if (!currentPointName) {
+                showAlert("Najpierw podaj nazwę lokalizacji / punktu kontrolnego!");
+                e.target.value = "";
+                return;
+            }
+
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                
+                if (data.length > 0) processExcelData(data);
+            };
+            reader.readAsBinaryString(file);
+        });
+
+        function processExcelData(data) {
+            // Pobierz nagłówki z pliku
+            headers = data[0].filter(h => h != null && h !== "");
+            
+            // Dodaj nową kolumnę dla obecnego punktu, jeśli nie istnieje
+            if (!headers.includes(currentPointName)) {
+                headers.push(currentPointName);
+            }
+
+            // Inicjalizacja wyboru kolumny do skanowania (pomiń kolumny statusów)
+            qrColumnSelect.innerHTML = headers
+                .filter(h => h !== currentPointName)
+                .map(h => `<option value="${h}" ${h.toLowerCase().includes('numer') || h.toLowerCase().includes('norma') ? 'selected' : ''}>${h}</option>`)
+                .join('');
+
+            columnSelectorSection.classList.remove('hidden');
+            locationInput.disabled = true; // Zablokuj zmianę nazwy w trakcie sesji
+            currentLocationLabel.innerText = `Punkt: ${currentPointName}`;
+
+            // Mapowanie danych
+            tableData = data.slice(1).filter(row => row.some(cell => cell !== null && cell !== "")).map(row => {
+                const obj = {};
+                headers.forEach((h, i) => {
+                    if (h === currentPointName) {
+                        // Jeśli w pliku już jest ta kolumna, zachowaj jej stan, jeśli nie - daj false
+                        const existingVal = row[i];
+                        obj[h] = (existingVal === true || existingVal === "TRUE" || existingVal === "[OK] SKOMPLETOWANO");
+                    } else {
+                        obj[h] = row[i] !== undefined ? row[i] : "";
+                    }
+                });
+                return obj;
+            });
+
+            renderTable();
+            updateStats();
+            emptyState.classList.add('hidden');
+            statsDiv.classList.remove('hidden');
+        }
+
+        function renderTable() {
+            tableHeader.innerHTML = `<tr>${headers.map(h => `
+                <th class="px-6 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider ${h === currentPointName ? 'bg-blue-100 text-blue-800' : ''}">${h}</th>
+            `).join('')}</tr>`;
+
+            tableBody.innerHTML = tableData.map((row, idx) => {
+                const isDoneAtCurrentPoint = row[currentPointName];
+                return `
+                <tr id="row-${idx}" class="${isDoneAtCurrentPoint ? 'scanned-row' : ''} hover:bg-gray-50 transition border-l-4 ${isDoneAtCurrentPoint ? 'border-green-500' : 'border-transparent'}">
+                    ${headers.map(h => {
+                        if (h === currentPointName) {
+                            return `
+                                <td class="px-6 py-4 text-center">
+                                    <input type="checkbox" ${row[h] ? 'checked' : ''} 
+                                        onchange="toggleComplete(${idx})"
+                                        class="w-6 h-6 text-blue-600 border-gray-300 rounded cursor-pointer">
+                                </td>
+                            `;
+                        }
+                        // Jeśli to inna kolumna statusu (opcjonalnie można tu dodać logikę ikonek dla starych punktów)
+                        const val = row[h];
+                        const displayVal = (val === true) ? "✅" : (val === false) ? "❌" : val;
+                        return `<td class="px-6 py-4 whitespace-nowrap text-sm ${h === currentPointName ? 'font-bold' : 'text-gray-500'}">${displayVal}</td>`;
+                    }).join('')}
+                </tr>
+            `}).join('');
+        }
+
+        function toggleComplete(idx) {
+            tableData[idx][currentPointName] = !tableData[idx][currentPointName];
+            renderTable();
+            updateStats();
+        }
+
+        function updateStats() {
+            const completed = tableData.filter(r => r[currentPointName]).length;
+            const total = tableData.length;
+            progressText.innerText = `${completed} / ${total}`;
+        }
+
+        function handleScan(decodedText) {
+            const selectedCol = qrColumnSelect.value;
+            const cleanDecoded = decodedText.trim().toLowerCase();
+            scanLog.innerText = `Ostatni skan: ${decodedText}`;
+            
+            const index = tableData.findIndex(row => row[selectedCol]?.toString().trim().toLowerCase() === cleanDecoded);
+
+            if (index !== -1) {
+                if (!tableData[index][currentPointName]) {
+                    tableData[index][currentPointName] = true;
+                    renderTable();
+                    updateStats();
+                    const targetRow = document.getElementById(`row-${index}`);
+                    targetRow.classList.add('found-highlight');
+                    scanResultText.innerText = "OK!";
+                    scanResultText.className = "text-center font-bold text-2xl text-green-600 animate-bounce";
+                    targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    scanResultText.innerText = "JUŻ SKANOWANO";
+                    scanResultText.className = "text-center font-bold text-xl text-yellow-500";
+                }
+            } else {
+                scanResultText.innerText = "BRAK NA LIŚCIE";
+                scanResultText.className = "text-center font-bold text-xl text-red-600";
+            }
+            setTimeout(() => { scanResultText.innerText = ""; }, 2000);
+        }
+
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 220 }, handleScan);
+
+        downloadBtn.addEventListener('click', () => {
+            if (tableData.length === 0) return;
+
+            // Przygotowanie do exportu - zamiana booleans na tekst w kolumnach statusu
+            const exportData = tableData.map(row => {
+                const newRow = {...row};
+                headers.forEach(h => {
+                    // Tylko aktualnie edytowany punkt zamieniamy na ładny opis
+                    if (h === currentPointName) {
+                        newRow[h] = row[h] ? "[OK] SKOMPLETOWANO" : "[  ] BRAK";
+                    }
+                });
+                return newRow;
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Logistyka");
+            XLSX.writeFile(workbook, `KOMPLETACJA_${currentPointName}.xlsx`);
+        });
+    </script>
+</body>
+</html>
