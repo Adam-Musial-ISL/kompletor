@@ -133,8 +133,23 @@
         const currentLocationLabel = document.getElementById('currentLocationLabel');
 
         function showAlert(msg) {
-            document.getElementById('alertMessage').innerText = msg;
-            document.getElementById('customAlert').classList.remove('hidden');
+            const alertBox = document.getElementById('customAlert');
+            const message = document.getElementById('alertMessage');
+
+            message.innerHTML = `
+                <div class="text-lg font-bold mb-4">
+                    ${msg}
+                </div>
+                <div class="flex justify-center">
+                    <button
+                        onclick="document.getElementById('customAlert').classList.add('hidden')"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold">
+                        OK
+                    </button>
+                </div>
+            `;
+
+            alertBox.classList.remove('hidden');
         }
 
         function confirmNewSet() {
