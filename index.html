@@ -113,6 +113,10 @@
         let headers = [];
         let currentPointName = "";
 
+        let lastScannedValue = "";
+        let lastScanTime = 0;
+        const SCAN_COOLDOWN_MS = 1500;
+
         const excelInput = document.getElementById('excelInput');
         const locationInput = document.getElementById('locationInput');
         const tableHeader = document.getElementById('tableHeader');
@@ -238,7 +242,15 @@
         function handleScan(decodedText) {
             const selectedCol = qrColumnSelect.value;
             const cleanDecoded = decodedText.trim().toLowerCase();
+            const now = Date.now();
             scanLog.innerText = `Ostatni skan: ${decodedText}`;
+
+            // blokada wielokrotnego odczytu tego samego QR
+            if (cleanDecoded === lastScannedValue && (now - lastScanTime) < SCAN_COOLDOWN_MS) {
+                return;
+            }
+            lastScannedValue = cleanDecoded;
+            lastScanTime = now;
             
             const index = tableData.findIndex(row => row[selectedCol]?.toString().trim().toLowerCase() === cleanDecoded);
 
@@ -251,7 +263,6 @@
                     targetRow.classList.add('found-highlight');
                     scanResultText.innerText = "OK!";
                     scanResultText.className = "text-center font-bold text-2xl text-green-600 animate-bounce";
-                    targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 } else {
                     scanResultText.innerText = "JUŻ SKANOWANO";
                     scanResultText.className = "text-center font-bold text-xl text-yellow-500";
@@ -260,6 +271,7 @@
                 scanResultText.innerText = "BRAK NA LIŚCIE";
                 scanResultText.className = "text-center font-bold text-xl text-red-600";
             }
+
             setTimeout(() => { scanResultText.innerText = ""; }, 2000);
         }
 
