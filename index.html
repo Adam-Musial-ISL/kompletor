@@ -6,29 +6,58 @@
     <title>System Kompletacji QR - Wielopunktowy</title>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#ec6608">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
+        :root {
+            --brand: #ec6608;
+            --brand-light: rgba(236, 102, 8, 0.12);
+            --brand-pulse: rgba(236, 102, 8, 0.45);
+        }
+
         .scanned-row {
-            background-color: #f0fdf4 !important;
+            background-color: var(--brand-light) !important;
             transition: background-color 0.5s ease;
         }
-        @keyframes pulse-green {
-            0% { background-color: #86efac; }
-            100% { background-color: #f0fdf4; }
+
+        @keyframes pulse-orange {
+            0% { background-color: var(--brand-pulse); }
+            100% { background-color: var(--brand-light); }
         }
+
         .found-highlight {
-            animation: pulse-green 2s ease-out;
+            animation: pulse-orange 2s ease-out;
         }
+
+        input[type="checkbox"] {
+            accent-color: var(--brand);
+        }
+
         #reader {
             width: 100% !important;
             border: none !important;
         }
+
         #reader video {
             border-radius: 0.5rem;
             object-fit: cover;
+        }
+
+        input[type="file"]::file-selector-button {
+            background-color: #ec6608;
+            color: #ffffff;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            opacity: 0.9;
         }
     </style>
 </head>
@@ -36,139 +65,136 @@
 <body class="bg-gray-50 min-h-screen font-sans text-gray-900">
 
     <div class="max-w-6xl mx-auto px-4 py-8">
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl font-bold" style="color:#ec6608">
-                Kompletor LogiTower
-            </h1>
-            <p class="text-gray-600 mt-2">
-                Wielopunktowy system weryfikacji łańcucha logistycznego.
-            </p>
-        </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <header class="mb-8 text-center">
+        <h1 class="text-3xl font-bold" style="color:var(--brand)">
+            Kompletor LogiTower
+        </h1>
+        <p class="text-gray-600 mt-2">
+            Wielopunktowy system weryfikacji łańcucha logistycznego.
+        </p>
+    </header>
 
-            <!-- Konfiguracja -->
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <div class="mb-4">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">
-                        Lokalizacja / Punkt kontrolny:
-                    </label>
-                    <input type="text" id="locationInput"
-                        placeholder="np. Pakowanie, Wysyłka..."
-                        class="w-full p-2 border rounded-lg outline-none font-bold"
-                        style="border-color:#ec6608; color:#ec6608"
-                    >
-                </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
 
-                <label class="block text-sm font-bold text-gray-700 mb-2 underline">
-                    Wczytaj arkusz (.xlsx)
-                </label>
+    <!-- KONFIGURACJA -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
 
-                <input type="file" id="excelInput" accept=".xlsx,.xls"
-                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
-                        file:rounded-full file:border-0 file:text-sm file:font-semibold
-                        cursor-pointer"
-                    style="--tw-file-bg:#ec6608"
-                >
+        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">
+            Lokalizacja / Punkt kontrolny:
+        </label>
 
-                <div id="columnSelectorSection" class="mt-4 hidden border-t pt-4">
-                    <label class="block text-sm font-bold text-gray-700 mb-2">
-                        Kolumna do skanowania:
-                    </label>
-                    <select id="qrColumnSelect"
-                        class="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white outline-none"
-                        style="outline-color:#ec6608">
-                    </select>
-                </div>
-            </div>
+        <input id="locationInput" type="text"
+            class="w-full p-2 border rounded-lg outline-none font-bold"
+            style="border-color:var(--brand); color:var(--brand)"
+            placeholder="np. Pakowanie, Wysyłka...">
 
-            <!-- Skaner -->
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:col-span-2">
-                <label class="block text-sm font-bold text-gray-700 mb-2 underline">
-                    Skaner kodów
-                </label>
+        <label class="block text-sm font-bold text-gray-700 mt-4 mb-2 underline">
+            Wczytaj arkusz (.xlsx)
+        </label>
 
-                <div class="flex flex-col md:flex-row gap-4">
-                    <div id="reader"
-                        class="flex-1 overflow-hidden bg-black rounded-lg min-h-[200px]">
-                    </div>
+        <input type="file" id="excelInput" accept=".xlsx,.xls"
+            class="block w-full text-sm text-gray-600 cursor-pointer">
 
-                    <div class="flex-1 flex flex-col justify-center items-center p-4 bg-gray-50
-                                rounded-lg border border-dashed border-gray-300">
-                        <div id="scanResult"
-                            class="text-center font-bold text-lg mb-2 h-8">
-                        </div>
-                        <div id="scanLog"
-                            class="text-xs text-gray-500 text-center italic">
-                            Czekam na skan...
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div id="columnSelectorSection" class="mt-4 hidden border-t pt-4">
+            <label class="block text-sm font-bold text-gray-700 mb-2">
+                Kolumna do skanowania:
+            </label>
+            <select id="qrColumnSelect"
+                class="w-full p-2 border border-gray-300 rounded-lg text-sm bg-white outline-none"
+                style="outline-color:var(--brand)">
+            </select>
+        </div>
+    </div>
+
+    <!-- SKANER -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:col-span-2">
+
+    <label class="block text-sm font-bold text-gray-700 mb-2 underline">
+        Skaner kodów
+    </label>
+
+    <div class="flex flex-col md:flex-row gap-4">
+        <div id="reader"
+            class="flex-1 overflow-hidden bg-black rounded-lg min-h-[200px]">
         </div>
 
-        <!-- Statystyki -->
-        <div id="stats"
-            class="hidden flex flex-wrap justify-between items-center mb-4 p-4 rounded-lg border gap-4"
-            style="background-color:#fff7f0; border-color:#ec6608">
-
-            <div class="flex items-center gap-4">
-                <span id="currentLocationLabel"
-                    class="text-white px-3 py-1 rounded text-xs font-bold uppercase tracking-widest"
-                    style="background-color:#ec6608">
-                    Punkt: ?
-                </span>
-
-                <span class="text-sm font-medium whitespace-nowrap"
-                    style="color:#ec6608">
-                    Postęp:
-                    <span id="progressText" class="text-xl font-black">0 / 0</span>
-                </span>
-            </div>
-
-            <div class="flex gap-2">
-                <button onclick="confirmNewSet()"
-                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg
-                        text-sm font-semibold transition">
-                    Nowy komplet
-                </button>
-
-                <button id="downloadBtn"
-                    class="text-white px-6 py-2 rounded-lg text-sm font-bold shadow-md transition
-                        transform active:scale-95 hover:opacity-90"
-                    style="background-color:#ec6608">
-                    Pobierz wynik (.xlsx)
-                </button>
-            </div>
-        </div>
-
-        <!-- Tabela -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
-                <table class="w-full text-left border-collapse" id="pickingTable">
-                    <thead id="tableHeader"
-                        class="bg-gray-100 sticky top-0 z-10 shadow-sm border-b">
-                    </thead>
-                    <tbody id="tableBody"
-                        class="divide-y divide-gray-100">
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="emptyState" class="py-20 text-center text-gray-400">
-                <p class="text-lg">
-                    Brak danych. Wprowadź lokalizację i wczytaj plik.
-                </p>
+        <div class="flex-1 flex flex-col justify-center items-center p-4 bg-gray-50
+                    rounded-lg border border-dashed border-gray-300">
+            <div id="scanResult" class="text-center font-bold text-lg mb-2 h-8"></div>
+            <div id="scanLog" class="text-xs text-gray-500 text-center italic">
+                Czekam na skan...
             </div>
         </div>
     </div>
 
-    <!-- Modal -->
+    </div>
+    </div>
+
+    <!-- STATYSTYKI -->
+    <div id="stats"
+        class="hidden flex flex-wrap justify-between items-center mb-4 p-4 rounded-lg border gap-4"
+        style="background-color:#fff7f0; border-color:var(--brand)">
+
+    <div class="flex items-center gap-4">
+        <span id="currentLocationLabel"
+            class="text-white px-3 py-1 rounded text-xs font-bold uppercase tracking-widest"
+            style="background-color:var(--brand)">
+            Punkt: ?
+        </span>
+
+        <span class="text-sm font-medium whitespace-nowrap"
+            style="color:var(--brand)">
+            Postęp:
+            <span id="progressText" class="text-xl font-black">0 / 0</span>
+        </span>
+    </div>
+
+    <div class="flex gap-2">
+        <button onclick="confirmNewSet()"
+            class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg
+                text-sm font-semibold transition">
+            Nowy komplet
+        </button>
+
+        <button id="downloadBtn"
+            class="text-white px-6 py-2 rounded-lg text-sm font-bold shadow-md
+                transition transform active:scale-95 hover:opacity-90"
+            style="background-color:var(--brand)">
+            Pobierz wynik (.xlsx)
+        </button>
+    </div>
+
+    </div>
+
+    <!-- TABELA -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+    <table class="w-full text-left border-collapse" id="pickingTable">
+        <thead id="tableHeader"
+            class="bg-gray-100 sticky top-0 z-10 shadow-sm border-b">
+        </thead>
+        <tbody id="tableBody"
+            class="divide-y divide-gray-100">
+        </tbody>
+    </table>
+    </div>
+
+    <div id="emptyState" class="py-20 text-center text-gray-400">
+        <p class="text-lg">
+            Brak danych. Wprowadź lokalizację i wczytaj plik.
+        </p>
+    </div>
+    </div>
+
+    </div>
+
+    <!-- MODAL -->
     <div id="customAlert"
         class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
-        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center">
-            <div id="alertMessage"></div>
-        </div>
+    <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center">
+        <div id="alertMessage"></div>
+    </div>
     </div>
 
     <script>

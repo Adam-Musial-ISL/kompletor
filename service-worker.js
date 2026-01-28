@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kompletor-isl-v10';
+const CACHE_NAME = 'kompletor-isl-v13';
 
 const ASSETS = [
   '/',
