@@ -105,8 +105,7 @@
     <!-- Modal Alert -->
     <div id="customAlert" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
         <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center">
-            <p id="alertMessage" class="text-lg font-bold mb-4"></p>
-            <button onclick="document.getElementById('customAlert').classList.add('hidden')" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">OK</button>
+            <div id="alertMessage"></div>
         </div>
     </div>
 
@@ -143,31 +142,28 @@
             const message = document.getElementById('alertMessage');
 
             message.innerHTML = `
-                <div class="mb-4 text-red-600 font-bold">
+                <div class="text-red-600 font-bold text-lg mb-2">
                     Uwaga!
                 </div>
-                <div class="text-sm text-gray-700">
+                <div class="text-sm text-gray-700 mb-6">
                     Spowoduje to utratę bieżących wyników kompletacji.<br>
                     Czy na pewno chcesz rozpocząć od nowa?
                 </div>
-            `;
-
-            alertBox.classList.remove('hidden');
-
-            // podmień zawartość przycisków modala
-            const modalContent = alertBox.querySelector('div > div');
-            modalContent.innerHTML += `
-                <div class="flex justify-center gap-4 mt-6">
-                    <button onclick="document.getElementById('customAlert').classList.add('hidden')"
-                        class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-semibold">
+                <div class="flex justify-center gap-4">
+                    <button
+                        onclick="document.getElementById('customAlert').classList.add('hidden')"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg font-semibold">
                         Anuluj
                     </button>
-                    <button onclick="location.reload()"
-                        class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold">
+                    <button
+                        onclick="location.reload()"
+                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold">
                         Tak, resetuj
                     </button>
                 </div>
             `;
+
+            alertBox.classList.remove('hidden');
         }
 
         excelInput.addEventListener('change', (e) => {
