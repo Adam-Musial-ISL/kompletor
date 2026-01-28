@@ -132,6 +132,14 @@
         const columnSelectorSection = document.getElementById('columnSelectorSection');
         const currentLocationLabel = document.getElementById('currentLocationLabel');
 
+        excelInput.addEventListener('click', (e) => {
+            if (!locationInput.value.trim()) {
+                e.preventDefault();      // blokuje otwarcie okna wyboru pliku
+                e.stopPropagation();
+                showAlert("Najpierw podaj nazwę lokalizacji / punktu kontrolnego!");
+            }
+        });
+
         function showAlert(msg) {
             const alertBox = document.getElementById('customAlert');
             const message = document.getElementById('alertMessage');
@@ -142,7 +150,10 @@
                 </div>
                 <div class="flex justify-center">
                     <button
-                        onclick="document.getElementById('customAlert').classList.add('hidden')"
+                        onclick="
+                            document.getElementById('customAlert').classList.add('hidden');
+                            locationInput.focus();
+                        "
                         class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold">
                         OK
                     </button>
