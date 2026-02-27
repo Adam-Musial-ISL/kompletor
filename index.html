@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Kompletacji QR - Wielopunktowy</title>
+    <link rel="icon" type="image/png" href="/LT-Logo.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#ec6608">
 
@@ -67,18 +68,46 @@
         input[type="file"]::file-selector-button:hover {
             opacity: 0.9;
         }
+
+        body {
+            position: relative;
+            background-color: #ffffff;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-color: var(--brand);
+            opacity: 0.9;
+        }
+
+        body > * {
+            position: relative;
+            z-index: 1;
+        }
+
     </style>
 </head>
 
-<body class="bg-gray-50 min-h-screen font-sans text-gray-900">
+<body class="min-h-screen font-sans text-gray-900">
 
     <div class="max-w-6xl mx-auto px-4 py-8">
 
     <header class="mb-8 text-center">
-        <h1 class="text-3xl font-bold" style="color:var(--brand)">
+        <div class="md:flex md:items-center md:justify-center md:gap-4">
+            <img
+                src="LT-Logo.png"
+                alt="LogiTower logo"
+                class="hidden md:block h-14 w-auto object-contain"
+            >
+            <h1 class="text-3xl font-bold text-white">
             Kompletor LogiTower
-        </h1>
-        <p class="text-gray-600 mt-2">
+            </h1>
+        </div>
+        <p class="text-gray-600 mt-2 text-center">
             Wielopunktowy system weryfikacji łańcucha logistycznego.
         </p>
     </header>
@@ -195,6 +224,16 @@
     </div>
     </div>
 
+    <section class="mt-8 mb-6 bg-white/90 rounded-xl border border-gray-200 p-4 md:p-5 text-sm text-gray-700">
+        <h2 class="font-bold mb-2" style="color:var(--brand)">Krótka instrukcja</h2>
+        <ol class="list-decimal list-inside space-y-1">
+            <li>Wpisz nazwę lokalizacji / punktu kontrolnego.</li>
+            <li>Wczytaj plik Excel i wybierz kolumnę do skanowania.</li>
+            <li>Skanuj kody QR lub zaznaczaj pozycje ręcznie w tabeli.</li>
+            <li>Po zakończeniu kliknij „Pobierz wynik (.xlsx)”.</li>
+        </ol>
+    </section>
+
     </div>
 
     <!-- MODAL -->
@@ -206,7 +245,8 @@
     </div>
 
     <script>
-    if ('serviceWorker' in navigator) {
+    const isLocalDevHost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    if ('serviceWorker' in navigator && !isLocalDevHost) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('/service-worker.js');
         });
@@ -459,13 +499,6 @@
             XLSX.utils.book_append_sheet(workbook, worksheet, "Logistyka");
             XLSX.writeFile(workbook, `KOMPLETACJA_${currentPointName}.xlsx`);
         });
-    </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/service-worker.js');
-            });
-        }
     </script>
 </body>
 </html>
